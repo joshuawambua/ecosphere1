@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>IoT Air Quality Dashboard</title>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+  margin:0;
+  font-family:"Segoe UI",Tahoma,Verdana,sans-serif;
+  background:#0f172a;
+  color:#e5e7eb;
+}
+header {
+  background:#020617;
+  padding:1rem 1.5rem;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  border-bottom:1px solid #1e293b;
+}
+.container {
+  display:grid;
+  grid-template-columns:320px 1fr;
+  grid-template-rows:1fr 260px;
+  height:calc(100vh - 64px);
+  gap:12px;
+  padding:12px;
+}
+.panel {
+  background:#020617;
+  border:1px solid #1e293b;
+  border-radius:10px;
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+}
+.sensor { display:flex; justify-content:space-between; margin-bottom:8px; }
+.value { font-weight:600; color:#38bdf8; }
+canvas { background:#020617; }
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>🌍 IoT Air Quality Dashboard</h1>
+  <div>Realtime Monitoring System</div>
+</header>
+
+<div class="container">
+
+<!-- LEFT PANEL -->
+<div class="panel">
+<h2>Realtime Sensor Values</h2>
+
+<div class="sensor">Temperature <span id="temp" class="value">--</span></div>
+<div class="sensor">Humidity <span id="hum" class="value">--</span></div>
+<div class="sensor">PM2.5 <span id="pm25" class="value">--</span></div>
+<div class="sensor">PM10 <span id="pm10" class="value">--</span></div>
+<div class="sensor">MQ7 (CO) <span id="mq7" class="value">--</span></div>
+<div class="sensor">MQ2 <span id="mq2" class="value">--</span></div>
+<div class="sensor">MQ8 <span id="mq8" class="value">--</span></div>
+
+</div>
+
+<!-- RIGHT PANEL -->
+<div class="panel">
+<h2>Graphical Tracking</h2>
+<canvas id="chart"></canvas>
+</div>
+
+<!-- ML PANEL -->
+<div class="panel" style="grid-column:1/span 2;">
+<h2>Machine Learning</h2>
+<div style="display:flex; gap:20px;">
+<div style="flex:1;">Predicted Values (Coming Soon)</div>
+<div style="flex:1;">Model Metrics (Coming Soon)</div>
+</div>
+</div>
+
+</div>
+
+<script>
+
+// 🔥 YOUR FIREBASE CONFIG
+const firebaseConfig = {
+  apiKey: "AIzaSyDtRt9ojUqjJX9ItczqH8ZaouFsSCwyhCQ",
+  authDomain: "ecosphere-434df.firebaseapp.com",
+  databaseURL: "https://ecosphere-434df-default-rtdb.firebaseio.com/",
+  projectId: "ecosphere-434df",
+  storageBucket: "ecosphere-434df.appspot.com",
+  messagingSenderId: "337466379916",
+  appId: "1:337466379916:web:42541d8d9e5884a8e8f5a9"
+};
+
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
+// Chart Setup
+const ctx = document.getElementById('chart');
+const chart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [
+      { label: 'Temperature', data: [], borderColor: '#38bdf8' },
+      { label: 'PM2.5', data: [], borderColor: '#22c55e' }
+    ]
+  },
+  options: {
+    responsive:true,
+    scales:{ x:{display:true}, y:{display:true} }
+  }
+});
+
+// 🔄 REALTIME LISTENER
+database.ref("air_quality/current").on("value", snapshot => {
+  const data = snapshot.val();
+  if(!data) return;
+
+  document.getElementById("temp").innerText = data.temperature + " °C";
+  document.getElementById("hum").innerText = data.humidity + " %";
+  document.getElementById("pm25").innerText = data.pm25 || "--";
+  document.getElementById("pm10").innerText = data.pm10 || "--";
+  document.getElementById("mq7").innerText = data.mq7_voltage;
+  document.getElementById("mq2").innerText = data.mq2_voltage;
+  document.getElementById("mq8").innerText = data.mq8_voltage;
+
+  // Update chart
+  const time = new Date().toLocaleTimeString();
+
+  chart.data.labels.push(time);
+  chart.data.datasets[0].data.push(data.temperature);
+  chart.data.datasets[1].data.push(data.pm25 || 0);
+
+  if(chart.data.labels.length > 20){
+    chart.data.labels.shift();
+    chart.data.datasets.forEach(d => d.data.shift());
+  }
+
+  chart.update();
+});
+
+</script>
+
+</body>
+</html>
